@@ -1,0 +1,28 @@
+---
+title: "01_CollectHTML"
+author: "Moritz Muller"
+date: "February 14, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This project collects all html from websites and searches the files for email addresses and appropriate tags. In principle, all websites can be used. In our case, we only select websites of interest groups to use the email addresses to send out a large-n survey
+
+# Load requires packages
+```{r}
+library(Rcrawler)
+library(stringi)
+```
+
+# First trial run with single website: download all html of website
+```{r}
+Rcrawler(Website = "http://www.edf-feph.org/", no_cores = 4, no_conn = 4, MaxDepth = 1, DIR = "./data")
+rawHTML <- paste(readLines("./data/edf-feph.org-141609/6 .html "), collapse="\n")
+gregexpr('([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})(\]?)', rawHTML, value = TRUE)
+
+rawHTML
+```
+
