@@ -17,13 +17,21 @@ library(Rcrawler)
 library(stringr)
 ```
 
-# First trial run with single website: download all html of website
+# First trial run with single website: download all html of website, clean the HTML and look for regex matches for email
 ```{r}
 Rcrawler(Website = "http://www.edf-feph.org/", no_cores = 4, no_conn = 4, MaxDepth = 1, DIR = "./data")
+
 rawHTML <- paste(readLines("./data/edf-feph.org-141609/6 .html "), collapse="\n")
-str_detect(rawHTML, "^[[:alnum:].-_]+@[[:alnum:].-]+$")
-str_extract("Â <a href=\"mailto:andre.felix@edf-feph.org\">", "^[[:alnum:].-_]+@[[:alnum:].-]+$")
-rawHTML
+#write html cleaner function
+cleanHTML <- function(x){
+  x <- gsub("<.*?>", "", x)
+  x <- gsub("\n", "", x)
+  x <- gsub("\t", "", x)
+  x <- gsub("@import", "", x)
+}
+rawHTML <- cleanHTML(x = rawHTML)
+str_extract_all(rawHTML, "[[:alnum:].-_]+@[[:alnum:].-]+.[a-z]{2,4}")
+
 
 ```
 
