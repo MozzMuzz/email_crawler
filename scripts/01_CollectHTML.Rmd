@@ -57,14 +57,18 @@ Now do this on a big scale: First loop through all files and get email addresses
 
 ```{r}
 # Get all the data!
-websites <- read.csv("./data/websites.csv")
-websites <- websites[1:5,]
-# For better error handling, use purrr package to not be tied to loops
-library(purrr)
-holyDataGrail <- map(websites$Website, possibly(Rcrawler(Website = websites$Website, no_cores = 4, no_conn = 4, MaxDepth = 1, DIR = "./data/scraped")), otherwise = "oups, something wrong here")
-for (i in websites$Website){
-  Rcrawler(Website = i, no_cores = 4, no_conn = 4, MaxDepth = 1, DIR = "./data/test")
+websites <- read.csv("./data/websites.csv", stringsAsFactors = F)
+websites <- websites[1:100,]
+
+for (i in websites$Website){ 
+  tryCatch({
+    Rcrawler(Website =i, no_cores = 4, no_conn = 4, MaxDepth = 1, DIR = "./data/scraped")
+}, error = function(e){cat("ERROR: ", conditionMessage(e), "\n")})
 }
+
+
+ 
+
 
 #now extract addresses
 folders.website <- data.frame(list.files("./data/test"))
@@ -87,6 +91,14 @@ for(i in 1:nrow(folders.website)){
   recommended.emails[[i]] <- most_probable[order(most_probable$n, decreasing = T),]
   write.csv(temporary.stash, file = paste0("./data/test/", folders.website[i,],"_emails.csv"))
 }
+
+
+#parallized version of the loop, because it takes a while
+library(foreach)
+library(doParallel)
+
+registerDoParallel(cores=4)
+stopCluster()
 
 ```
 Deprecated things
