@@ -19,20 +19,22 @@ library(stringr)
 
 # First trial run with single website: download all html of website, clean the HTML and look for regex matches for email
 ```{r}
-Rcrawler(Website = "http://sete.gr/", no_cores = 4, no_conn = 4, MaxDepth = 1, DIR = "./data")
+Rcrawler(Website = "http://sete.gr/", no_cores = 4, no_conn = 4, MaxDepth = 1, DIR = "./data/scraped")
+URL <- "http://sete.gr/"
+folders.website <- data.frame(list.files("./data/scraped"))
+files.html <- data.frame(list.files(paste0("./data/scraped/",folders.website[1,])))
 
-rawHTML <- paste(readLines("./data/sete.gr-211040/4 .html "), collapse="\n")
-#write html cleaner function
-cleanHTML <- function(x){
-  x <- paste(x, collapse="\n")
-  x <- gsub("<.*?>", " ", x)
-  x <- gsub("\n", " ", x)
-  x <- gsub("\t", " ", x)
-  x <- gsub("@import", " ", x)
+results <- list(list())
+
+for(i in 1:nrow(folders.website)){ 
+  files.html <- data.frame(list.files(paste0("./data/scraped/",folders.website[i,])))
+  URL <- as.character(folders.website[i,])
+  for (l in 1:nrow(files.html)){
+    rawHTML <- paste(readLines(paste0("./data/scraped/", folders.website[i,],"/", files.html[l,])), collapse="\n")
+    results[[URL]][l] <- as.data.frame(str_extract_all(rawHTML, "[a-zA-Z][a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+.[a-zA-Z0-9-.]+"))
+  }
 }
-rawHTML <- cleanHTML(x = rawHTML)
-view <- as.data.frame(rawHTML)
-str_extract_all(rawHTML, "[a-zA-Z][a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+.[a-zA-Z0-9-.]+")
+
 
 #alternative: [[:alnum:].-_]+@[[:alnum:].-]+.[a-z]{2,4}
 ```
@@ -44,7 +46,7 @@ websites <- read.csv("./data/websites.csv")
 
 # For better error handling, use purrr package to not be tied to loops
 library(purrr)
-holyDataGrail <- map(websites$Website, possibly(Rcrawler(Website = i, no_cores = 4, no_conn = 4, MaxDepth = 1, DIR = "./data")), otherwise = "oups, something wrong here")
+holyDataGrail <- map(websites$Website, possibly(Rcrawler(Website = websites$Website, no_cores = 4, no_conn = 4, MaxDepth = 1, DIR = "./data/scraped")), otherwise = "oups, something wrong here")
 for (i in websites$Website){
   Rcrawler(Website = i, no_cores = 4, no_conn = 4, MaxDepth = 1, DIR = "./data")
 }
