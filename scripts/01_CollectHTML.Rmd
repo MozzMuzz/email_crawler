@@ -15,16 +15,19 @@ This project collects all html from websites and searches the files for email ad
 ```{r}
 library(Rcrawler)
 library(stringr)
+library(dplyr)
 ```
 
 # First trial run with single website: download all html of website, clean the HTML and look for regex matches for email
 ```{r}
-Rcrawler(Website = "http://sete.gr/", no_cores = 4, no_conn = 4, MaxDepth = 1, DIR = "./data/scraped")
-URL <- "http://sete.gr/"
+Rcrawler(Website = "https://tporganics.eu/", no_cores = 4, no_conn = 4, MaxDepth = 1, DIR = "./data/scraped")
+
+
 folders.website <- data.frame(list.files("./data/scraped"))
-files.html <- data.frame(list.files(paste0("./data/scraped/",folders.website[1,])))
+
 
 results <- list(list())
+recommended.emails <- list()
 
 for(i in 1:nrow(folders.website)){ 
   files.html <- data.frame(list.files(paste0("./data/scraped/",folders.website[i,])))
@@ -33,7 +36,19 @@ for(i in 1:nrow(folders.website)){
     rawHTML <- paste(readLines(paste0("./data/scraped/", folders.website[i,],"/", files.html[l,])), collapse="\n")
     results[[URL]][l] <- as.data.frame(str_extract_all(rawHTML, "[a-zA-Z][a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+.[a-zA-Z0-9-.]+"))
   }
+  temporary.stash <- as.data.frame(unlist(results[[URL]]))
+  names(temporary.stash)[1] <- "emails"
+  most_probable <- temporary.stash%>%
+    count(emails)%>%
+    top_n(3,n)
+  most_probable <- most_probable[1:5,]
+  recommended.emails[[i]] <- most_probable[order(most_probable$n, decreasing = T),]
+  write.csv(temporary.stash, file = paste0("./data/scraped/", folders.website[i,],"_emails.csv"))
 }
+
+
+
+
 
 
 #alternative: [[:alnum:].-_]+@[[:alnum:].-]+.[a-z]{2,4}
@@ -43,15 +58,35 @@ Now do this on a big scale: First loop through all files and get email addresses
 ```{r}
 # Get all the data!
 websites <- read.csv("./data/websites.csv")
-
+websites <- websites[1:5,]
 # For better error handling, use purrr package to not be tied to loops
 library(purrr)
 holyDataGrail <- map(websites$Website, possibly(Rcrawler(Website = websites$Website, no_cores = 4, no_conn = 4, MaxDepth = 1, DIR = "./data/scraped")), otherwise = "oups, something wrong here")
 for (i in websites$Website){
-  Rcrawler(Website = i, no_cores = 4, no_conn = 4, MaxDepth = 1, DIR = "./data")
+  Rcrawler(Website = i, no_cores = 4, no_conn = 4, MaxDepth = 1, DIR = "./data/test")
 }
-datafiles <- lapply(Sys.glob("./data/edf-feph.org-141609/*.html"), readLines)
-temp <- cleanHTML(datafiles[[1]])
+
+#now extract addresses
+folders.website <- data.frame(list.files("./data/test"))
+results <- list(list())
+recommended.emails <- list()
+
+for(i in 1:nrow(folders.website)){ 
+  files.html <- data.frame(list.files(paste0("./data/test/",folders.website[i,])))
+  URL <- as.character(folders.website[i,])
+  for (l in 1:nrow(files.html)){
+    rawHTML <- paste(readLines(paste0("./data/test/", folders.website[i,],"/", files.html[l,])), collapse="\n")
+    results[[URL]][l] <- as.data.frame(str_extract_all(rawHTML, "[a-zA-Z][a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+.[a-zA-Z0-9-.]+"))
+  }
+  temporary.stash <- as.data.frame(unlist(results[[URL]]))
+  names(temporary.stash)[1] <- "emails"
+  most_probable <- temporary.stash%>%
+    count(emails)%>%
+    top_n(3,n)
+  most_probable <- most_probable[1:5,]
+  recommended.emails[[i]] <- most_probable[order(most_probable$n, decreasing = T),]
+  write.csv(temporary.stash, file = paste0("./data/test/", folders.website[i,],"_emails.csv"))
+}
 
 ```
 Deprecated things
