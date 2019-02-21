@@ -19,19 +19,51 @@ library(stringr)
 
 # First trial run with single website: download all html of website, clean the HTML and look for regex matches for email
 ```{r}
-Rcrawler(Website = "http://www.edf-feph.org/", no_cores = 4, no_conn = 4, MaxDepth = 1, DIR = "./data")
+Rcrawler(Website = "http://sete.gr/", no_cores = 4, no_conn = 4, MaxDepth = 1, DIR = "./data")
 
-rawHTML <- paste(readLines("./data/edf-feph.org-141609/6 .html "), collapse="\n")
+rawHTML <- paste(readLines("./data/sete.gr-211040/4 .html "), collapse="\n")
 #write html cleaner function
 cleanHTML <- function(x){
-  x <- gsub("<.*?>", "", x)
-  x <- gsub("\n", "", x)
-  x <- gsub("\t", "", x)
-  x <- gsub("@import", "", x)
+  x <- paste(x, collapse="\n")
+  x <- gsub("<.*?>", " ", x)
+  x <- gsub("\n", " ", x)
+  x <- gsub("\t", " ", x)
+  x <- gsub("@import", " ", x)
 }
 rawHTML <- cleanHTML(x = rawHTML)
-str_extract_all(rawHTML, "[[:alnum:].-_]+@[[:alnum:].-]+.[a-z]{2,4}")
+view <- as.data.frame(rawHTML)
+str_extract_all(rawHTML, "[a-zA-Z][a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+.[a-zA-Z0-9-.]+")
 
+#alternative: [[:alnum:].-_]+@[[:alnum:].-]+.[a-z]{2,4}
+```
+Now do this on a big scale: First loop through all files and get email addresses. Then create smart database that returns most probable email address
 
+```{r}
+# Get all the data!
+websites <- read.csv("./data/websites.csv")
+
+# For better error handling, use purrr package to not be tied to loops
+library(purrr)
+holyDataGrail <- map(websites$Website, possibly(Rcrawler(Website = i, no_cores = 4, no_conn = 4, MaxDepth = 1, DIR = "./data")), otherwise = "oups, something wrong here")
+for (i in websites$Website){
+  Rcrawler(Website = i, no_cores = 4, no_conn = 4, MaxDepth = 1, DIR = "./data")
+}
+datafiles <- lapply(Sys.glob("./data/edf-feph.org-141609/*.html"), readLines)
+temp <- cleanHTML(datafiles[[1]])
+
+```
+Deprecated things
+```{r}
+#Html cleaner (messed with white spaces, because it deleted them)
+#write html cleaner function
+cleanHTML <- function(x){
+  x <- paste(x, collapse="\n")
+  x <- gsub("<.*?>", " ", x)
+  x <- gsub("\n", " ", x)
+  x <- gsub("\t", " ", x)
+  x <- gsub("@import", " ", x)
+}
+rawHTML <- cleanHTML(x = rawHTML)
+view <- as.data.frame(rawHTML)
 ```
 
