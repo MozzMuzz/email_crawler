@@ -58,7 +58,7 @@ Now do this on a big scale: First loop through all files and get email addresses
 ```{r}
 # Get all the data!
 websites <- read.csv("./data/websites.csv", stringsAsFactors = F)
-websites <- websites[1:100,]
+websites <- websites[59:100,]
 
 for (i in websites$Website){ 
   tryCatch({
@@ -66,20 +66,21 @@ for (i in websites$Website){
 }, error = function(e){cat("ERROR: ", conditionMessage(e), "\n")})
 }
 
-
- 
-
-
 #now extract addresses
-folders.website <- data.frame(list.files("./data/test"))
+folders.website <- data.frame(list.files("./data/scraped"), stringsAsFactors = F)
+#folders.website <- as.data.frame(folders.website[2:3,])
 results <- list(list())
 recommended.emails <- list()
 
 for(i in 1:nrow(folders.website)){ 
-  files.html <- data.frame(list.files(paste0("./data/test/",folders.website[i,])))
+  tryCatch({
+  print(paste("Next Website:", folders.website[i,]))
+  files.html <- data.frame(list.files(paste0("./data/scraped/",folders.website[i,])))
+  print(paste(nrow(files.html), "files in folder"))
   URL <- as.character(folders.website[i,])
   for (l in 1:nrow(files.html)){
-    rawHTML <- paste(readLines(paste0("./data/test/", folders.website[i,],"/", files.html[l,])), collapse="\n")
+    print(paste(folders.website[i,],": Searching in", files.html[l,]))
+    rawHTML <- paste(readLines(paste0("./data/scraped/", folders.website[i,],"/", files.html[l,])), collapse="\n")
     results[[URL]][l] <- as.data.frame(str_extract_all(rawHTML, "[a-zA-Z][a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+.[a-zA-Z0-9-.]+"))
   }
   temporary.stash <- as.data.frame(unlist(results[[URL]]))
@@ -88,17 +89,17 @@ for(i in 1:nrow(folders.website)){
     count(emails)%>%
     top_n(3,n)
   most_probable <- most_probable[1:5,]
-  recommended.emails[[i]] <- most_probable[order(most_probable$n, decreasing = T),]
-  write.csv(temporary.stash, file = paste0("./data/test/", folders.website[i,],"_emails.csv"))
+  recommended.emails[[URL]] <- most_probable[order(most_probable$n, decreasing = T),]
+  print("Generating CSV")
+  write.csv(temporary.stash, file = paste0("./data/scraped/", folders.website[i,],"_emails.csv"))
+  print("Done")
+  }, error = function(e){cat("ERROR: ", conditionMessage(e), "\n")}
+  , warning = function(e){cat("Warning: ", conditionMessage(e), "\n")})
 }
 
+save(recommended.emails, file = "./data/scraped/01_mostlikelyemails.RData")
+save(results, file = "./data/scraped/02_allemails.RData")
 
-#parallized version of the loop, because it takes a while
-library(foreach)
-library(doParallel)
-
-registerDoParallel(cores=4)
-stopCluster()
 
 ```
 Deprecated things
