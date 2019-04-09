@@ -1,39 +1,45 @@
 ---
-title: "01_CollectHTML"
-author: "Moritz Muller"
+title: "Scrape email addresses - R Version"
+author: "Moritz Müller"
 date: "February 14, 2019"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+#knitr::opts_knit$set(root.dir = '../') 
 ```
 
 This project collects all html from websites and searches the files for email addresses and appropriate tags. In principle, all websites can be used. In our case, we only select websites of interest groups to use the email addresses to send out a large-n survey
 
-# Load requires packages
+# Load required packages
 ```{r}
 library(Rcrawler)
 library(stringr)
 library(dplyr)
 ```
 
-# First trial run with single website: download all html of website, clean the HTML and look for regex matches for email
+# First trial run 
+
+with single website: download all html of website, clean the HTML and look for regex matches for email. I use MaxDepth = 1 since a majority of websites disclose emails addresses within one level from the starting page. However, if you look for private email addresses, they yend to be burried deeped in the website, so it is advisable to set MaxDepth to 2 or 3 in that case (which increases runtime).
+
+The loop counts the number of mentions of the email addresses on the websites and returns the most likely general email address. It is entirely possible to adapt the search pattern to look for personal email addresses (e.g. FIRSTNAME.LASTNAME@STRING.STRING).
 ```{r}
-Rcrawler(Website = "https://tporganics.eu/", no_cores = 4, no_conn = 4, MaxDepth = 1, DIR = "./data/scraped")
+Rcrawler(Website = "https://www.electricmobilityeurope.eu/", no_cores = 4, no_conn = 4, MaxDepth = 1, DIR = "./data/test")
 
-
-folders.website <- data.frame(list.files("./data/scraped"))
-
-
+#Initiate files for loop
+folders.website <- data.frame(list.files("./data/test"))
 results <- list(list())
 recommended.emails <- list()
 
+#run loop
 for(i in 1:nrow(folders.website)){ 
-  files.html <- data.frame(list.files(paste0("./data/scraped/",folders.website[i,])))
+  files.html <- data.frame(list.files(paste0("./data/test/",folders.website[i,])))
   URL <- as.character(folders.website[i,])
   for (l in 1:nrow(files.html)){
-    rawHTML <- paste(readLines(paste0("./data/scraped/", folders.website[i,],"/", files.html[l,])), collapse="\n")
+    rawHTML <- paste(readLines(paste0("./data/test/", folders.website[i,],"/", files.html[l,])), collapse="\n")
     results[[URL]][l] <- as.data.frame(str_extract_all(rawHTML, "[a-zA-Z][a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+.[a-zA-Z0-9-.]+"))
   }
   temporary.stash <- as.data.frame(unlist(results[[URL]]))
@@ -41,21 +47,19 @@ for(i in 1:nrow(folders.website)){
   most_probable <- temporary.stash%>%
     count(emails)%>%
     top_n(3,n)
-  most_probable <- most_probable[1:5,]
+  most_probable <- most_probable[1:10,]
   recommended.emails[[i]] <- most_probable[order(most_probable$n, decreasing = T),]
-  write.csv(temporary.stash, file = paste0("./data/scraped/", folders.website[i,],"_emails.csv"))
+  write.csv(temporary.stash, file = paste0("./data/test/", folders.website[i,],"_emails.csv"))
 }
 
-
-
-
-
-
-#alternative: [[:alnum:].-_]+@[[:alnum:].-]+.[a-z]{2,4}
+recommended.emails[[1]]
+#alternative regex: [[:alnum:].-_]+@[[:alnum:].-]+.[a-z]{2,4}
 ```
-Now do this on a big scale: First loop through all files and get email addresses. Then create smart database that returns most probable email address
+# Batch run
 
-```{r}
+Now do this on a big scale: First loop through all files and get email addresses. Then create smart database that returns most probable email address. Note: The CSV simply lists website URLs of the organizations. (Will not run this since it takes hours)
+
+```{r, eval=F}
 # Get all the data!
 websites <- read.csv("./data/websites.csv", stringsAsFactors = F)
 websites <- websites[59:100,]
@@ -102,8 +106,9 @@ save(results, file = "./data/scraped/02_allemails.RData")
 
 
 ```
+
 Deprecated things
-```{r}
+```{r, eval=F}
 #Html cleaner (messed with white spaces, because it deleted them)
 #write html cleaner function
 cleanHTML <- function(x){
